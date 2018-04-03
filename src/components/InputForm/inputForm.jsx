@@ -8,123 +8,133 @@ import moment from 'moment';
 class InputForm extends React.Component {
 
   render() {
+
     const formItemLayout = {
       labelCol: {
-        xs: {span: 24},
-        sm: {span: 8},
+        xs: { span: 24 },
+        sm: { span: 8 },
       },
       wrapperCol: {
-        xs: {span: 24},
-        sm: {span: 16},
+        xs: { span: 24 },
+        sm: { span: 16 },
       },
     };
 
     return (
-      <Col>
-        <Form
-          onSubmit={store.handleSubmit}
+      <Form
+        onSubmit={store.handleSubmit}
+      >
+        <Row
+          style={{display: 'flex', justifyContent: 'space-around'}}
         >
-          <Form.Item
-            {...formItemLayout}
-            label='Start Date-Time'
-          >
-            <Row>
-              <Col>
-                <DatePicker
-                  // disabledDate={currentDate => {
-                  //   if (currentDate) {
-                  //     // return pm.disabledEnd(
-                  //     //   currentDate,
-                  //     //   campaign.starts !== 0 ? moment(campaign.starts) : null
-                  //     // )
-                  //   }
-                  // }}
-                  // disabledTime={selectedDate => {
-                  //   // if (selectedDate) {
-                  //   //   return pm.addDisabledTimeEnd(selectedDate)
-                  //   // }
-                  //   // return false
-                  // }}
-                  showTime={{format: 'HH:mm'}}
-                  placeholder="Start date"
-                  format="YYYY-MM-DD HH:mm"
-                  onChange={(date, dayString) => {
-                    store.startDay = moment(dayString)
-                    store.startDateTime = moment(date)
-                    if (date === null) {
-                      store.clearStart()
-                      store.finalStartDateTime = null;
-                    }
-                  }}
-                  value={store.finalStartDateTime}
-                  onOk={() => {
-                    store.finalStartDateTime = store.startDateTime
-                  }}
-                />
-              </Col>
-            </Row>
-          </Form.Item>
+          <Col>
+            <Form.Item
+              label='Start Day-Time: '
+              {...formItemLayout}
+            >
+              <DatePicker
+                // disabledDate={currentDate => {
+                //   if (currentDate) {
+                //     // return pm.disabledEnd(
+                //     //   currentDate,
+                //     //   campaign.starts !== 0 ? moment(campaign.starts) : null
+                //     // )
+                //   }
+                // }}
+                // disabledTime={selectedDate => {
+                //   // if (selectedDate) {
+                //   //   return pm.addDisabledTimeEnd(selectedDate)
+                //   // }
+                //   // return false
+                // }}
+                showTime={{format: 'HH:mm'}}
+                placeholder="Start date"
+                format="YYYY-MM-DD HH:mm"
+                onChange={(date, dayString) => {
+                  store.startDay = moment(dayString)
+                  store.startDateTime = moment(date)
+                  if (date === null) {
+                    store.clearStart()
+                    store.finalStartDateTime = null;
+                  }
+                }}
+                value={store.finalStartDateTime}
+                onOk={() => {
+                  store.finalStartDateTime = store.startDateTime
+                }}
+              />
+            </Form.Item>
+          </Col>
+          <Col>
+            <Form.Item
+              label='End Date-Time: '
+              {...formItemLayout}
+            >
+              <DatePicker
+                // disabledDate={currentDate => {
+                //   if (currentDate) {
+                //     // return pm.disabledEnd(
+                //     //   currentDate,
+                //     //   campaign.starts !== 0 ? moment(campaign.starts) : null
+                //     // )
+                //   }
+                // }}
+                // disabledTime={selectedDate => {
+                //   // if (selectedDate) {
+                //   //   return pm.addDisabledTimeEnd(selectedDate)
+                //   // }
+                //   // return false
+                // }}
+                showTime={{format: 'HH:mm'}}
+                placeholder="Start date"
+                format="YYYY-MM-DD HH:mm"
+                onChange={(date, dayString) => {
+                  store.endDay = moment(dayString)
+                  store.endDateTime = moment(date)
+                  if (date === null) {
+                    store.clearEnd()
+                    store.finalEndDateTime = null;
+                  }
+                }}
+                value={store.finalEndDateTime}
+                onOk={() => {
+                  store.finalEndDateTime = store.endDateTime
+                }}
+              />
+            </Form.Item>
+          </Col>
+          <Col>
+            <Form.Item
+              label='Event Title: '
+              {...formItemLayout}
+            >
+              <Input
+                value={store.eventTitle}
+                style={{width: 175}}
+                onChange={store.onChange}
+              />
+            </Form.Item>
+          </Col>
+          <Col>
+            <Button
+              onClick={store.resetForm}
+              type="danger"
+              disabled={store.disabledReset}
+            >
+              Reset
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              disabled={store.disabledItem}
+              style={{marginLeft: 8}}
+            >
+              Submit
+            </Button>
 
-          <Form.Item
-            {...formItemLayout}
-            label='End Date-Time'
-          >
-            <Row>
-              <Col>
-                <DatePicker
-                  // disabledDate={currentDate => {
-                  //   if (currentDate) {
-                  //     // return pm.disabledEnd(
-                  //     //   currentDate,
-                  //     //   campaign.starts !== 0 ? moment(campaign.starts) : null
-                  //     // )
-                  //   }
-                  // }}
-                  // disabledTime={selectedDate => {
-                  //   // if (selectedDate) {
-                  //   //   return pm.addDisabledTimeEnd(selectedDate)
-                  //   // }
-                  //   // return false
-                  // }}
-                  showTime={{format: 'HH:mm'}}
-                  placeholder="Start date"
-                  format="YYYY-MM-DD HH:mm"
-                  onChange={(date, dayString) => {
-                    store.endDay = moment(dayString)
-                    store.endDateTime = moment(date)
-                    if (date === null) {
-                      store.clearEnd()
-                      store.finalEndDateTime = null;
-                    }
-                  }}
-                  value={store.finalEndDateTime}
-                  onOk={() => {
-                    store.finalEndDateTime = store.endDateTime
-                  }}
-                />
-              </Col>
-            </Row>
-          </Form.Item>
-          <Form.Item
-            label='Event Title'
-            {...formItemLayout}
-          >
-            <Input
-              value={store.eventTitle}
-              style={{width: 175}}
-              onChange={store.onChange}
-            />
-          </Form.Item>
-          <Form.Item
-            wrapperCol={{
-              xs: {span: 24, offset: 0},
-              sm: {span: 16, offset: 8},
-            }}
-          >
-            <Button type="primary" htmlType="submit" disabled={store.disabledItem}>Submit</Button>
-          </Form.Item>
-        </Form>
-      </Col>
+          </Col>
+        </Row>
+      </Form>
     )
   }
 }

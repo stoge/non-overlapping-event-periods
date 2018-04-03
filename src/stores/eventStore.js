@@ -1,4 +1,5 @@
-import { observable, action, computed, toJS } from 'mobx'
+import { observable, action, computed, toJS } from 'mobx';
+import sort from 'short-uuid';
 
 class EventStore {
   @observable startDateTime = null
@@ -24,9 +25,16 @@ class EventStore {
     return !(this.finalStartDateTime && this.finalEndDateTime && this.eventTitle)
   }
 
+  @computed
+  get disabledReset () {
+    return !(this.finalStartDateTime || this.finalEndDateTime || this.eventTitle)
+  }
+
   @action.bound
-    handleSubmit = (e) => {
+    handleSubmit= (e) => {
     e.preventDefault();
+    this.createEvent();
+    this.resetForm();
   }
 
   @action.bound
@@ -58,6 +66,27 @@ class EventStore {
   @action.bound
   onChange = (e) => {
     this.eventTitle = e.target.value
+  }
+
+  @action.bound
+  createEvent = () => {
+   this.events =
+     [
+       ...this.events,
+      {
+        id: sort(),
+        title: this.eventTitle,
+        start: this.finalStartDateTime,
+        end: this.finalEndDateTime,
+      }
+     ]
+  }
+
+  @action.bound
+  resetForm = () => {
+    this.clearEnd();
+    this.clearStart();
+    this.eventTitle = '';
   }
 
 }
