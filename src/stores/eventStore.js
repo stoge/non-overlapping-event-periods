@@ -1,5 +1,4 @@
 import { observable, action, computed, toJS } from 'mobx'
-import moment from 'moment'
 
 class EventStore {
   @observable startDateTime = null
@@ -17,13 +16,51 @@ class EventStore {
   @observable.ref disabledMinutes = []
   @observable.ref disabledHours = []
 
+  @observable eventTitle = ''
   @observable events = []
 
+  @computed
+  get disabledItem () {
+    return !(this.finalStartDateTime && this.finalEndDateTime && this.eventTitle)
+  }
+
   @action.bound
-  handleSubmit = (e) => {
-     e.preventDefault();
-     debugger;
-   }
+    handleSubmit = (e) => {
+    e.preventDefault();
+  }
+
+  @action.bound
+    clearStart = () => {
+    this.startDateTime = null
+    this.startDay = null
+    this.finalStartDateTime = null
+
+    if (this.sameDayCampaignType === 'starts') {
+    this.sameDayCampaign = null
+    this.sameDayCampaignFlag = false
+    this.sameDayCampaignType = ''
+    }
+  }
+
+  @action.bound
+  clearEnd = () => {
+    this.endDateTime = null
+    this.endDay = null
+    this.finalEndDateTime = null
+
+    if (this.sameDayCampaignType === 'ends') {
+    this.sameDayCampaign = null
+    this.sameDayCampaignFlag = false
+    this.sameDayCampaignType = ''
+    }
+  }
+
+  @action.bound
+  onChange = (e) => {
+    this.eventTitle = e.target.value
+  }
+
 }
 
-export default new EventStore()
+const inst = new EventStore()
+export default inst
