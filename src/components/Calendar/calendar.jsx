@@ -14,11 +14,12 @@ class MyCalendar extends React.Component {
     return (
       <div style={{height: 'calc(100vh - 170px)'}}>
         <BigCalendar
-          events={store.events.slice()}
+          events={store.calendarEvents.slice()}
         />
       </div>
     )
   }
+
 }
 
 export default MyCalendar;

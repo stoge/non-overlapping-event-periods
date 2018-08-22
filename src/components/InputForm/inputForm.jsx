@@ -12,11 +12,11 @@ class InputForm extends React.Component {
     const formItemLayout = {
       labelCol: {
         xs: { span: 24 },
-        sm: { span: 8 },
+        sm: { span: 10 },
       },
       wrapperCol: {
         xs: { span: 24 },
-        sm: { span: 16 },
+        sm: { span: 14 },
       },
     };
 
@@ -33,26 +33,27 @@ class InputForm extends React.Component {
               {...formItemLayout}
             >
               <DatePicker
-                // disabledDate={currentDate => {
-                //   if (currentDate) {
-                //     // return pm.disabledEnd(
-                //     //   currentDate,
-                //     //   campaign.starts !== 0 ? moment(campaign.starts) : null
-                //     // )
-                //   }
-                // }}
-                // disabledTime={selectedDate => {
-                //   // if (selectedDate) {
-                //   //   return pm.addDisabledTimeEnd(selectedDate)
-                //   // }
-                //   // return false
-                // }}
+                disabledDate={currentDate => {
+                  if (currentDate) {
+                    return store.disabledEnd(
+                      currentDate,
+                      !!store.startDateTime ? store.startDateTime : null
+                    )
+                  }
+                }}
+                disabledTime={selectedDate => {
+                  if (selectedDate) {
+                    return store.addDisabledTimeEnd(selectedDate)
+                  }
+                  return false
+                }}
                 showTime={{format: 'HH:mm'}}
                 placeholder="Start date"
                 format="YYYY-MM-DD HH:mm"
                 onChange={(date, dayString) => {
                   store.startDay = moment(dayString)
                   store.startDateTime = moment(date)
+                  store.finalStartDateTime = store.startDateTime
                   if (date === null) {
                     store.clearStart()
                     store.finalStartDateTime = null;
@@ -71,26 +72,27 @@ class InputForm extends React.Component {
               {...formItemLayout}
             >
               <DatePicker
-                // disabledDate={currentDate => {
-                //   if (currentDate) {
-                //     // return pm.disabledEnd(
-                //     //   currentDate,
-                //     //   campaign.starts !== 0 ? moment(campaign.starts) : null
-                //     // )
-                //   }
-                // }}
-                // disabledTime={selectedDate => {
-                //   // if (selectedDate) {
-                //   //   return pm.addDisabledTimeEnd(selectedDate)
-                //   // }
-                //   // return false
-                // }}
+                disabledDate={currentDate => {
+                  if (currentDate) {
+                    return store.disabledEnd(
+                      currentDate,
+                      !!store.endDateTime ? store.endDateTime : null
+                    )
+                  }
+                }}
+                disabledTime={selectedDate => {
+                  if (selectedDate) {
+                    return store.addDisabledTimeEnd(selectedDate)
+                  }
+                  return false
+                }}
                 showTime={{format: 'HH:mm'}}
                 placeholder="Start date"
                 format="YYYY-MM-DD HH:mm"
                 onChange={(date, dayString) => {
                   store.endDay = moment(dayString)
                   store.endDateTime = moment(date)
+                  store.finalEndDateTime = store.endDateTime
                   if (date === null) {
                     store.clearEnd()
                     store.finalEndDateTime = null;
@@ -116,22 +118,27 @@ class InputForm extends React.Component {
             </Form.Item>
           </Col>
           <Col>
-            <Button
-              onClick={store.resetForm}
-              type="danger"
-              disabled={store.disabledReset}
-            >
-              Reset
-            </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              disabled={store.disabledItem}
-              style={{marginLeft: 8}}
-            >
-              Submit
-            </Button>
-
+            <Form.Item>
+              <Button
+                onClick={store.resetForm}
+                type="danger"
+                disabled={store.disabledReset}
+              >
+                Reset
+              </Button>
+            </Form.Item>
+          </Col>
+          <Col>
+            <Form.Item>
+              <Button
+                type="primary"
+                htmlType="submit"
+                disabled={store.disabledISubmit}
+                style={{marginLeft: 8}}
+              >
+                Submit
+              </Button>
+            </Form.Item>
           </Col>
         </Row>
       </Form>
