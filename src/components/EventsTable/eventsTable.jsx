@@ -1,6 +1,6 @@
 import React from 'react'
 import { observer } from 'mobx-react'
-import { Table } from 'antd'
+import { Table, Button, Popconfirm, Icon, Divider } from 'antd'
 import moment from 'moment';
 import store from '../../stores/eventStore'
 
@@ -27,6 +27,34 @@ class EventsTable extends React.Component {
       key: 'eventEndTime',
       render: (text, record) => {
         return moment(record.end).format('YYYY-MM-DD HH:mm')
+      }
+    },
+    {
+      title: 'Actions',
+      key: 'eventActions',
+      render: (text, record) => {
+        return (
+          <div>
+            <Popconfirm
+              placement="top"
+              title="Are you sure you want to delete the event"
+              onConfirm={() => store.deleteEvent(record.id)}
+            >
+              <Button
+                type="danger"
+                size="small"
+              >
+                <Icon type="delete" theme="outlined" />
+              </Button>
+            </Popconfirm>
+            <Divider type="vertical" />
+            <Button
+              size="small"
+            >
+              <Icon type="edit" theme="outlined" />
+            </Button>
+          </div>
+        )
       }
     }
   ]

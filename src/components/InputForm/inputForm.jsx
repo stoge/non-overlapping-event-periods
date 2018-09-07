@@ -7,8 +7,10 @@ import moment from 'moment';
 @observer(['events'])
 class InputForm extends React.Component {
 
-  render() {
 
+  render() {
+    const { form } = this.props
+    const { getFieldDecorator } = this.props.form
     const formItemLayout = {
       labelCol: {
         xs: { span: 24 },
@@ -22,7 +24,7 @@ class InputForm extends React.Component {
 
     return (
       <Form
-        onSubmit={store.handleSubmit}
+        onSubmit={(e)=>store.handleSubmit(e, form)}
       >
         <Row
           style={{display: 'flex', justifyContent: 'space-around'}}
@@ -32,38 +34,49 @@ class InputForm extends React.Component {
               label='Start Day-Time: '
               {...formItemLayout}
             >
-              <DatePicker
-                disabledDate={currentDate => {
-                  if (currentDate) {
-                    return store.disabledEnd(
-                      currentDate,
-                      !!store.startDateTime ? store.startDateTime : null
-                    )
-                  }
-                }}
-                disabledTime={selectedDate => {
-                  if (selectedDate) {
-                    return store.addDisabledTimeEnd(selectedDate)
-                  }
-                  return false
-                }}
-                showTime={{format: 'HH:mm'}}
-                placeholder="Start date"
-                format="YYYY-MM-DD HH:mm"
-                onChange={(date, dayString) => {
-                  store.startDay = moment(dayString)
-                  store.startDateTime = moment(date)
-                  store.finalStartDateTime = store.startDateTime
-                  if (date === null) {
-                    store.clearStart()
-                    store.finalStartDateTime = null;
-                  }
-                }}
-                value={store.finalStartDateTime}
-                onOk={() => {
-                  store.finalStartDateTime = store.startDateTime
-                }}
-              />
+              {getFieldDecorator(
+                'startTime'
+              )(
+                <DatePicker
+                  //value={store.finalStartDate} // <-Not needed due to FieldDecorator
+                  disabledDate={currentDate => {
+                    if (currentDate) {
+                      return store.disabledStart(
+                        currentDate,
+                        !!store.initialEndDate ? store.initialEndDate : null
+                      )
+                    }
+                    return false
+                  }}
+                  disabledTime={selectedDate => {
+                    if (selectedDate) {
+                      return store.disabledTimeForStart(selectedDate)
+                    }
+                    return false
+                  }}
+                  showTime={{ format: 'HH:mm' }}
+                  format="YYYY-MM-DD HH:mm"
+                  onChange={(date, dayString) => {
+                    if (date === null) {
+                      store.clearStart()
+                    } else {
+                      store.handleStartDateChange(date)
+                    }
+                  }}
+                  onOpenChange={(status) => {
+                    if(!status && !store.finalStartDate){
+                      form.setFieldsValue({
+                        'startTime': null
+                      })
+                      store.clearStart()
+                    }
+                  }}
+                  onOk={() => {
+                    store.finalStartDate = store.actualStartDate
+                    store.initialStartDate = store.actualStartDate
+                  }}
+                />
+              )}
             </Form.Item>
           </Col>
           <Col>
@@ -71,38 +84,49 @@ class InputForm extends React.Component {
               label='End Date-Time: '
               {...formItemLayout}
             >
-              <DatePicker
+              {getFieldDecorator(
+                'endTime'
+                )(
+                <DatePicker
+                // value={store.finalEndDate} // <-Not needed due to FieldDecorator
                 disabledDate={currentDate => {
                   if (currentDate) {
                     return store.disabledEnd(
                       currentDate,
-                      !!store.endDateTime ? store.endDateTime : null
+                      !!store.initialStartDate ? store.initialStartDate : null
                     )
                   }
                 }}
                 disabledTime={selectedDate => {
                   if (selectedDate) {
-                    return store.addDisabledTimeEnd(selectedDate)
+                    return store.disabledTimeForEnd(selectedDate)
                   }
                   return false
                 }}
-                showTime={{format: 'HH:mm'}}
-                placeholder="Start date"
+                showTime={{ format: 'HH:mm' }}
+                placeholder="End date"
                 format="YYYY-MM-DD HH:mm"
                 onChange={(date, dayString) => {
-                  store.endDay = moment(dayString)
-                  store.endDateTime = moment(date)
-                  store.finalEndDateTime = store.endDateTime
                   if (date === null) {
                     store.clearEnd()
-                    store.finalEndDateTime = null;
+                  } else {
+                    store.handleEndDateChange(date)
                   }
                 }}
-                value={store.finalEndDateTime}
                 onOk={() => {
-                  store.finalEndDateTime = store.endDateTime
+                  store.finalEndDate = store.actualEndDate
+                  store.initialEndDate = store.actualEndDate
+                }}
+                onOpenChange={(status) => {
+                  if(!status && !store.finalEndDate){
+                    form.setFieldsValue({
+                      'endTime': null
+                    })
+                    store.clearEnd()
+                  }
                 }}
               />
+              )}
             </Form.Item>
           </Col>
           <Col>
@@ -120,7 +144,7 @@ class InputForm extends React.Component {
           <Col>
             <Form.Item>
               <Button
-                onClick={store.resetForm}
+                onClick={() => store.resetForm(form)}
                 type="danger"
                 disabled={store.disabledReset}
               >
@@ -146,4 +170,4 @@ class InputForm extends React.Component {
   }
 }
 
-export default InputForm
+export default Form.create()(InputForm)

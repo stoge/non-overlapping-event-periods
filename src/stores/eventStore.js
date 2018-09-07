@@ -1,85 +1,128 @@
-import { observable, action, computed, toJS } from 'mobx';
-import moment from 'moment'
+import { observable, action, computed } from 'mobx';
+import Moment from 'moment'
 import sort from 'short-uuid';
-import { map } from 'lodash';
+import { map, isEmpty, union, filter, sortBy } from 'lodash';
+import { extendMoment } from 'moment-range';
+
+const moment = extendMoment(Moment)
 
 class EventStore {
-  @observable startDateTime = null
-  @observable startDay = null
-  @observable finalStartDateTime = null
+  @observable actualStartDate = null
+  @observable initialStartDate = null
+  @observable finalStartDate = null
 
-  @observable endDateTime = null
-  @observable endDay = null
-  @observable finalEndDateTime = null
+  @observable actualEndDate = null
+  @observable initialEndDate = null
+  @observable finalEndDate = null
 
-  @observable sameDayCampaign = null
-  @observable sameDayCampaignFlag = false
-  @observable sameDayCampaignType = ''
-
-  @observable.ref disabledMinutes = []
-  @observable.ref disabledHours = []
+  @observable disabledMinutes = []
+  @observable disabledHours = []
 
   @observable eventTitle = ''
-  @observable events = []
+  @observable events = [
+    // {
+    //   id: sort().new(),
+    //   title: 'test1',
+    //   start: moment().add(1, 'days'),
+    //   end: moment().add(2,'days')
+    // },
+    // {
+    //   id: sort().new(),
+    //   title: 'test2',
+    //   start: moment().subtract(10, 'd'),
+    //   end: moment().subtract(10, 'd').add(2, 'hours'),
+    // },
+    {
+      id: sort().new(),
+      title: 'test3',
+      start: moment().add(2, 'hours').add(1,'d'),
+      end: moment().add(4, 'hours').add(1,'d'),
+    },
+    {
+      id: sort().new(),
+      title: 'test4',
+      start: moment().add(5, 'hours').add(1,'d'),
+      end: moment().add(7, 'hours').add(1,'d'),
+    },
+    // {
+    //   id: sort().new(),
+    //   title: 'test5',
+    //   start: moment().add(10, 'minutes'),
+    //   end: moment().add(20, 'minutes'),
+    // },
+    // {
+    //   id: sort().new(),
+    //   title: 'test6',
+    //   start: moment().add(10, 'minutes'),
+    //   end: moment().add(20, 'minutes'),
+    // },
+  ]
 
 
   @computed
   get disabledISubmit () {
-    return !(this.finalStartDateTime && this.finalEndDateTime && this.eventTitle)
+    return !(this.finalStartDate && this.finalEndDate && this.eventTitle)
   }
 
   @computed
   get disabledReset () {
-    return !(this.finalStartDateTime || this.finalEndDateTime || this.eventTitle)
+    return !(this.finalStartDate || this.finalEndDate || this.eventTitle)
   }
 
   @action.bound
-    handleSubmit= (e) => {
+    handleSubmit = (e,form) => {
     e.preventDefault();
     this.createEvent();
-    this.resetForm();
+    this.resetForm(form)
   }
 
   @action.bound
     clearStart = () => {
-    this.startDateTime = null
-    this.startDay = null
-    this.finalStartDateTime = null
-
-    if (this.sameDayCampaignType === 'starts') {
-    this.sameDayCampaign = null
-    this.sameDayCampaignFlag = false
-    this.sameDayCampaignType = ''
-    }
+    this.actualStartDate = null
+    this.initialStartDate = null
+    this.finalStartDate = null
   }
 
   @action.bound
   clearEnd = () => {
-    this.endDateTime = null
-    this.endDay = null
-    this.finalEndDateTime = null
+    this.actualEndDate = null
+    this.initialEndDate = null
+    this.finalEndDate = null
+  }
 
-    if (this.sameDayCampaignType === 'ends') {
-    this.sameDayCampaign = null
-    this.sameDayCampaignFlag = false
-    this.sameDayCampaignType = ''
+  handleStartDateChange (date) {
+    if (this.initialStartDate && this.initialStartDate.format('YYYY-MM-DD') === date.format('YYYY-MM-DD')) {
+      this.actualStartDate = date
+    } else {
+      this.initialStartDate = date
+      this.actualStartDate = date
     }
   }
 
-  @action.bound
-  checkPastDay = (currentDay) => {
-    return moment(currentDay.format('YYYY-MM-DD')).isBefore(moment().format('YYYY-MM-DD'))
-  }
-
-  @action.bound
-  checkIfAfterDay = (currentDay) => {
-    if (this.endDay) {
-      return moment(currentDay.format('YYYY-MM-DD')).isAfter(moment(this.endDay, 'YYYY-MM-DD'))
+  handleEndDateChange (date) {
+    if (this.initialEndDate && this.initialEndDate.format('YYYY-MM-DD') === date.format('YYYY-MM-DD')) {
+      this.actualEndDate = date
+    } else {
+      this.initialEndDate = date
+      this.actualEndDate = date
     }
   }
 
-  @action.bound
-  existingCampaignDay = (currentDay) => {
+  checkPastDay (currentDay) {
+    return moment(currentDay.format('YYYY-MM-DD')).isBefore(
+      moment().format('YYYY-MM-DD')
+    )
+  }
+
+  checkIfBeforeEndDay (currentDay) {
+    if (this.initialEndDate) {
+      return moment(currentDay.format('YYYY-MM-DD')).isAfter(
+        moment(this.initialEndDate, 'YYYY-MM-DD')
+      )
+    }
+  }
+
+  existingCampaignDay (currentDay) {
     const existingEvents = this.events
     let curDay = currentDay.format('YYYY-MM-DD')
 
@@ -99,34 +142,45 @@ class EventStore {
     }
   }
 
-  @action.bound
-  checkExistingEndSelected = (currentDay) => {
-    const existingEvents = this.events
-    let curDay = currentDay.format('YYYY-MM-DD')
+  isEndSelected (currentDay) {
+    if (this.finalEndDate) {
+      const existingEvents = sortBy(this.events, event => {
+        return event.end
+      })
+      let nearestEnd = null
+      for (let i = 0; i < existingEvents.length; i++) {
+        if (existingEvents[i].end.isBefore(this.finalEndDate)) {
+          nearestEnd = existingEvents[i].end
+        }
+      }
+      if (nearestEnd) {
+        return moment(currentDay,'YYYY-MM-DD').isBefore(moment(nearestEnd,'YYYY-MM-DD')) &&
+              moment(currentDay,'YYYY-MM-DD') !== moment(nearestEnd,'YYYY-MM-DD')
+      }
+    }
+  }
 
-    for (var i = 0; i < existingEvents.length; i++) {
-      let existingCampaignStartDay = moment(existingEvents[i].start).format(
-        'YYYY-MM-DD'
-      )
-      let existingCampaignEndDay = moment(existingEvents[i].end).format(
-        'YYYY-MM-DD'
-      )
-      if (
-        moment(existingCampaignStartDay).isAfter(
-          moment(curDay).format('YYYY-MM-DD')
-        ) &&
-        moment(this.endDay, 'YYYY-MM-DD').isAfter(
-          moment(existingCampaignEndDay)
-        )
-      ) {
-        return true
+  isStartSelected (currentDay) {
+    if (this.finalStartDate) {
+      const existingEvents = sortBy(this.events, event => {
+        return event.end
+      })
+      let nearestStart = null
+      for (let i = 0; i < existingEvents.length; i++) {
+        if (existingEvents[i].start.isAfter(this.finalStartDate)) {
+          nearestStart = existingEvents[i].start
+        }
+      }
+      if (nearestStart) {
+        return moment(currentDay,'YYYY-MM-DD').isAfter(moment(nearestStart,'YYYY-MM-DD')) &&
+              moment(currentDay,'YYYY-MM-DD') !== moment(nearestStart,'YYYY-MM-DD')
       }
     }
   }
 
   disabledStart (currentDate, endDay) {
     if (endDay) {
-      this.endDay = endDay
+      this.initialEndDate = endDay
     }
     // Check if currentDate is in past
     if (this.checkPastDay(currentDate)) {
@@ -141,17 +195,16 @@ class EventStore {
       return true
     }
     // Check for overlapping campaigns
-    if (this.endDay) {
-      if (this.checkExistingEndSelected(currentDate)) {
-        return true
-      }
+    if (this.isEndSelected(currentDate)) {
+      return true
     }
+
     return false
   }
 
-  disabledEnd (currentDate, startDay, eventId) {
+  disabledEnd (currentDate, startDay) {
     if (startDay) {
-      this.startDay = startDay
+      this.initialStartDate = startDay
     }
     if (this.checkPastDay(currentDate)) {
       return true
@@ -159,26 +212,24 @@ class EventStore {
     if (this.checkIfAfterStartDay(currentDate)) {
       return true
     }
-    if (this.checkExistingCampaignDay(currentDate, eventId)) {
+    if (this.checkExistingCampaignDay(currentDate)) {
       return true
     }
-    if (this.startDay) {
-      if (this.checkExistingStartSelected(currentDate)) {
-        return true
-      }
+    if (this.isStartSelected(currentDate)) {
+      return true
     }
     return false
   }
 
   checkIfAfterStartDay (currentDate) {
-    if (!this.startDay) {
+    if (!this.initialStartDate) {
       return this.checkPastDay(currentDate)
     }
 
-    return currentDate.isBefore(this.startDay.format('YYYY-MM-DD'))
+    return currentDate.isBefore(this.initialStartDate.format('YYYY-MM-DD'))
   }
 
-  checkExistingCampaignDay (currentDate, eventId) {
+  checkExistingCampaignDay (currentDate) {
     const existingEvents = this.events
     for (var i = 0; i < existingEvents.length; i++) {
       let existingCampaignStartDay = moment(existingEvents[i].start).format(
@@ -193,182 +244,91 @@ class EventStore {
         ) &&
         moment(existingCampaignEndDay).isAfter(
           currentDate.format('YYYY-MM-DD')
-        ) &&
-        eventId !== existingEvents[i].id
+        )
       ) {
         return true
       }
     }
   }
 
-  checkExistingStartSelected (currentDate) {
-    const existingEvents = this.events
-    if (this.sameDayCampaignFlag) {
-      if (this.sameDayCampaign) {
-        if (
-          !moment(currentDate.format('YYYY-MM-DD')).isSame(
-            this.sameDayCampaign.format('YYYY-MM-DD')
-          )
-        ) {
-          return true
-        }
-      }
-    }
-    for (var i = 0; i < existingEvents.length; i++) {
-      let existingCampaignStartDay = moment(existingEvents[i].start).format(
-        'YYYY-MM-DD'
-      )
-      if (
-        moment(currentDate.format('YYYY-MM-DD')).isSame(
-          existingCampaignStartDay
-        )
-      ) {
-        this.sameDayCampaignFlag = true
-        return false
-      }
-    }
-  }
-
-  checkPastTime (selectedDate) {
+  disablePastTime (selectedDate) {
     if (
       selectedDate.date() === moment().date() &&
       selectedDate.month() === moment().month() &&
       selectedDate.year() === moment().year()
     ) {
-      this.getDisabledAfterTime(moment().hour(), moment().minute())
-    }
-  }
-
-  checkNotBeforeStartTime (selectedDate) {
-    if (this.startDay) {
-      if (
-        selectedDate.format('YYYY-MM-DD') === this.startDay.format('YYYY-MM-DD')
-      ) {
-        if (this.sameDayCampaign) {
-          switch (this.sameDayCampaignType) {
-            case 'starts': {
-              if (selectedDate.hour() === this.startDay.hour()) {
-                this.getDisabledBetweenTime(
-                  this.startDay.hour(),
-                  this.startDay.minutes(),
-                  this.sameDayCampaign.hour(),
-                  null
-                )
-              } else if (selectedDate.hour() === this.sameDayCampaign.hour()) {
-                this.getDisabledBetweenTime(
-                  this.startDay.hour(),
-                  null,
-                  this.sameDayCampaign.hour(),
-                  this.sameDayCampaign.minutes()
-                )
-              } else {
-                this.getDisabledBetweenTime(
-                  this.startDay.hour(),
-                  null,
-                  this.sameDayCampaign.hour(),
-                  null
-                )
-              }
-              break
-            }
-            case 'ends': {
-              if (selectedDate.hour() === this.startDay.hour()) {
-                this.getDisabledBetweenTime(
-                  this.startDay.hour(),
-                  this.startDay.minutes(),
-                  null,
-                  null
-                )
-              } else if (selectedDate.hour() === this.sameDayCampaign.hour()) {
-                this.getDisabledBetweenTime(
-                  this.sameDayCampaign.hour(),
-                  this.sameDayCampaign.minutes(),
-                  null,
-                  null
-                )
-              } else {
-                if (selectedDate.isBefore(this.sameDayCampaign)) {
-                  this.getDisabledBetweenTime(
-                    this.sameDayCampaign.hour(),
-                    59,
-                    null,
-                    null
-                  )
-                } else {
-                  this.getDisabledBetweenTime(
-                    this.sameDayCampaign.hour(),
-                    0,
-                    null,
-                    null
-                  )
-                }
-              }
-              break
-            }
-          }
-        } else {
-          if (selectedDate.hour() === this.startDay.hour()) {
-            this.getDisabledBetweenTime(
-              this.startDay.hour(),
-              this.startDay.minutes(),
-              null,
-              null
-            )
-          } else {
-            this.getDisabledBetweenTime(this.startDay.hour(), null, null, null)
-          }
-        }
+      this.getDisabledHoursBefore(moment().hour()-1)
+      if (selectedDate.hour() === moment().hour()) {
+        this.getDisabledMinutesBefore(moment().minutes())
       }
     }
   }
 
-  checkExistingTime (selectedDate) {
-    const existing = this.existingCampaigns
-    for (var i = 0; i < existing.length; i++) {
-      if (
-        existing[i].status === 'ACTIVE' &&
-        selectedDate.format('YYYY-MM-DD') ===
-        moment(existing[i].starts).format('YYYY-MM-DD')
-      ) {
-        this.sameDayCampaign = moment(existing[i].starts)
-        this.sameDayCampaignType = 'starts'
-        if (selectedDate.hour() === moment(existing[i].starts).hour()) {
-          this.getDisabledAfterTime(
-            moment(existing[i].starts).hour(),
-            moment(existing[i].starts).minute()
+  handleHourPreview (selectedDate) {
+    const existingEvents = this.events
+    if (!isEmpty(existingEvents)){
+      for (var i = 0; i < existingEvents.length; i++) {
+        if (
+          selectedDate.format('YYYY-MM-DD') ===
+          existingEvents[i].start.format('YYYY-MM-DD') &&
+          selectedDate.format('YYYY-MM-DD') ===
+          existingEvents[i].end.format('YYYY-MM-DD')
+        ) {
+          this.getDisabledHoursFromTo(
+            existingEvents[i].start.hour(),
+            existingEvents[i].end.hour()
           )
-        } else if (selectedDate.isAfter(moment(existing[i].starts))) {
-          this.getDisabledAfterTime(moment(existing[i].starts).hour(), 0)
-        } else {
-          this.getDisabledAfterTime(moment(existing[i].starts).hour(), 59)
-        }
-      }
-      if (
-        existing[i].status === 'ACTIVE' &&
-        selectedDate.format('YYYY-MM-DD') ===
-        moment(existing[i].expires).format('YYYY-MM-DD')
-      ) {
-        this.sameDayCampaign = moment(existing[i].expires)
-        this.sameDayCampaignType = 'ends'
-        if (selectedDate.hour() === moment(existing[i].expires).hour()) {
-          this.getDisabledBeforeTime(
-            moment(existing[i].expires).hour(),
-            moment(existing[i].expires).minute()
-          )
-        } else if (selectedDate.isBefore(moment(existing[i].expires))) {
-          this.getDisabledBeforeTime(moment(existing[i].expires).hour(), 59)
-        } else {
-          this.getDisabledBeforeTime(moment(existing[i].expires).hour(), 0)
+        } else if (
+          selectedDate.format('YYYY-MM-DD') ===
+          existingEvents[i].start.format('YYYY-MM-DD')
+        ) {
+          this.getDisabledHoursAfter(existingEvents[i].start.hour()+1)
+        } else if (
+          selectedDate.format('YYYY-MM-DD') ===
+          existingEvents[i].end.format('YYYY-MM-DD')
+        ) {
+          this.getDisabledHoursBefore(existingEvents[i].end.hour()-1)
         }
       }
     }
   }
 
-  addDisabledTimeEnd (selectedDate) {
+  handleMinutesPreview(selectedDate) {
+    const selectedDayEvents = filter(this.events, event => {
+      return selectedDate.format('YYYY-MM-DD') === event.start.format('YYYY-MM-DD') ||
+        selectedDate.format('YYYY-MM-DD') === event.end.format('YYYY-MM-DD')
+    })
+    if (!isEmpty(selectedDayEvents)) {
+      for (var i = 0; i < selectedDayEvents.length; i++) {
+        if (selectedDate.format('YYYY-MM-DD') === selectedDayEvents[i].start.format('YYYY-MM-DD') &&
+            selectedDate.format('YYYY-MM-DD') === selectedDayEvents[i].end.format('YYYY-MM-DD')) {
+          // event starts and ends at same day
+          if (selectedDate.hour() === selectedDayEvents[i].start.hour() &&
+            selectedDate.hour() === selectedDayEvents[i].end.hour()
+          ) {
+            this.getDisabledMinutesFromTo(selectedDayEvents[i].start.minutes(), selectedDayEvents[i].end.minutes())
+          } else if (selectedDate.hour() === selectedDayEvents[i].start.hour()) {
+            this.getDisabledMinutesAfter(selectedDayEvents[i].start.minutes())
+          } else if(selectedDate.hour() === selectedDayEvents[i].end.hour()){
+            this.getDisabledMinutesBefore(selectedDayEvents[i].end.minutes())
+          }
+        } else if (selectedDate.format('YYYY-MM-DD') === selectedDayEvents[i].start.format('YYYY-MM-DD')) {
+          this.getDisabledMinutesAfter(selectedDayEvents[i].start.minutes())
+        } else if (selectedDate.format('YYYY-MM-DD') === selectedDayEvents[i].end.format('YYYY-MM-DD')){
+          this.getDisabledMinutesBefore(selectedDayEvents[i].end.minutes())
+        }
+      }
+    }
+  }
+
+
+  disabledTimeForEnd (selectedDate) {
     this.disabledHours = []
     this.disabledMinutes = []
-    this.checkPastTime(selectedDate)
-    this.checkNotBeforeStartTime(selectedDate)
+    this.disablePastTime(selectedDate)
+    this.handleHourPreview(selectedDate)
+    this.handleMinutesPreview(selectedDate)
+    this.handleSelectedStartDate(selectedDate)
 
     return {
       disabledHours: () => this.disabledHours,
@@ -376,104 +336,148 @@ class EventStore {
     }
   }
 
-  addDisabledTimeStart (selectedDate) {
+  disabledTimeForStart (selectedDate) {
     this.disabledHours = []
     this.disabledMinutes = []
-    this.checkPastTime(selectedDate)
-    this.checkExistingTime(selectedDate)
-
+    this.disablePastTime(selectedDate)
+    this.handleHourPreview(selectedDate)
+    this.handleMinutesPreview(selectedDate)
+    this.handleSelectedEndDate(selectedDate)
     return {
       disabledHours: () => this.disabledHours,
       disabledMinutes: () => this.disabledMinutes
     }
   }
 
-  getDisabledAfterTime (hour, minute) {
+  getDisabledHoursFromTo(fromHour, toHour) {
     let rangeHours = []
-    let rangeMinutes = []
 
-    if (!isNaN(parseInt(hour))) {
-      for (var i = 0; i <= 23; i++) {
-        if (i > hour) {
+    if (!isNaN(parseInt(fromHour) && !isNaN(parseInt(toHour)))) {
+      for (let i = 0; i < toHour; i++) {
+        if (i > fromHour) {
           rangeHours.push(i)
         }
       }
     }
-
-    if (!isNaN(parseInt(minute))) {
-      for (var j = 0; j <= 59; j++) {
-        if (j >= minute) {
-          rangeMinutes.push(j)
-        }
-      }
-    }
-
-    this.disabledHours = rangeHours
-    this.disabledMinutes = rangeMinutes
+    this.disabledHours = union(this.disabledHours, rangeHours)
   }
 
-  getDisabledBeforeTime (hour, minute) {
-    let rangeHours = []
+  getDisabledMinutesFromTo(fromMinutes, toMinutes) {
     let rangeMinutes = []
 
-    if (!isNaN(parseInt(hour))) {
-      for (var i = 0; i <= 23; i++) {
-        if (i < hour) {
-          rangeHours.push(i)
+    if (!isNaN(parseInt(fromMinutes) && !isNaN(parseInt(toMinutes)))) {
+      for (let i = 0; i < toMinutes; i++) {
+        if (i > fromMinutes) {
+          rangeMinutes.push(i)
         }
       }
     }
-
-    if (!isNaN(parseInt(minute))) {
-      for (var j = 0; j <= 59; j++) {
-        if (j <= minute) {
-          rangeMinutes.push(j)
-        }
-      }
-    }
-
-    this.disabledHours = rangeHours
-    this.disabledMinutes = rangeMinutes
+    this.disabledMinutes = union(this.disabledMinutes,rangeMinutes)
   }
-  getDisabledBetweenTime (beforeHours, beforeMinutes, afterHours, afterMinutes) {
-    let rangeHours = []
-    let rangeMinutes = []
 
-    if (!isNaN(parseInt(beforeHours))) {
+  getDisabledHoursAfter(afterHour) {
+    let rangeHours = []
+
+    if(!isNaN(parseInt(afterHour))) {
       for (let i = 0; i <= 23; i++) {
-        if (i < beforeHours) {
+        if (i >= afterHour) {
           rangeHours.push(i)
         }
       }
     }
-
-    if (!isNaN(parseInt(beforeMinutes))) {
-      for (let j = 0; j <= 59; j++) {
-        if (j <= beforeMinutes) {
-          rangeMinutes.push(j)
-        }
-      }
-    }
-
-    if (!isNaN(parseInt(afterHours))) {
-      for (let i = 0; i <= 23; i++) {
-        if (i > afterHours) {
-          rangeHours.push(i)
-        }
-      }
-    }
-
-    if (!isNaN(parseInt(afterMinutes))) {
-      for (let j = 0; j <= 59; j++) {
-        if (j >= afterMinutes) {
-          rangeMinutes.push(j)
-        }
-      }
-    }
-
-    this.disabledHours = rangeHours
-    this.disabledMinutes = rangeMinutes
+    this.disabledHours = union(rangeHours, this.disabledHours)
   }
+
+  getDisabledHoursBefore(beforeHour) {
+    let rangeHours = []
+
+    if (!isNaN(parseInt(beforeHour))) {
+      for (let j = 0; j <= 23; j++) {
+        if (j <= beforeHour) {
+          rangeHours.push(j)
+        }
+      }
+    }
+
+    this.disabledHours = union(rangeHours, this.disabledHours)
+  }
+
+  getDisabledMinutesAfter(minutesAfter) {
+    let rangeMinutes = []
+
+    if(!isNaN(parseInt(minutesAfter))) {
+      for (let i = 0; i <= 59; i++) {
+        if (i >= minutesAfter) {
+          rangeMinutes.push(i)
+        }
+      }
+    }
+    this.disabledMinutes = union(rangeMinutes, this.disabledMinutes)
+  }
+
+  getDisabledMinutesBefore(minutesBefore) {
+    let rangeMinutes = []
+
+    if (!isNaN(parseInt(minutesBefore))) {
+      for (let j = 0; j <= 59; j++) {
+        if (j <= minutesBefore) {
+          rangeMinutes.push(j)
+        }
+      }
+    }
+    this.disabledMinutes = union(rangeMinutes,this.disabledMinutes)
+  }
+
+  handleSelectedEndDate (selectedDate) {
+    if (this.finalEndDate) {
+      const selectedDayEvents = filter(this.events, event => {
+        return selectedDate.format('YYYY-MM-DD') === event.start.format('YYYY-MM-DD') ||
+          selectedDate.format('YYYY-MM-DD') === event.end.format('YYYY-MM-DD')
+      })
+      if (!isEmpty(selectedDayEvents)) {
+        for (var i = 0; i < selectedDayEvents.length; i++) {
+          if (selectedDate.format('YYYY-MM-DD') === selectedDayEvents[i].end.format('YYYY-MM-DD')) {
+            this.getDisabledHoursBefore(selectedDayEvents[i].end.hour()-1)
+            if( selectedDate.hour() === selectedDayEvents[i].end.hour()) {
+              this.getDisabledMinutesBefore(selectedDayEvents[i].end.minute())
+            }
+          }
+        }
+      }
+      if (selectedDate.format('YYYY-MM-DD') === this.finalEndDate.format('YYYY-MM-DD')) {
+        this.getDisabledHoursAfter(this.finalEndDate.hour()+1)
+        if (selectedDate.hour() === this.finalEndDate.hour()) {
+          this.getDisabledMinutesAfter(this.finalEndDate.minute())
+        }
+      }
+    }
+  }
+
+  handleSelectedStartDate(selectedDate) {
+    if (this.finalStartDate) {
+      const selectedDayEvents = filter(this.events, event => {
+        return selectedDate.format('YYYY-MM-DD') === event.start.format('YYYY-MM-DD') ||
+          selectedDate.format('YYYY-MM-DD') === event.end.format('YYYY-MM-DD')
+      })
+      if (!isEmpty(selectedDayEvents)) {
+        for (var i = 0; i < selectedDayEvents.length; i++) {
+          if (selectedDate.format('YYYY-MM-DD') === selectedDayEvents[i].start.format('YYYY-MM-DD')) {
+            this.getDisabledHoursAfter(selectedDayEvents[i].start.hour()+1)
+            if( selectedDate.hour() === selectedDayEvents[i].start.hour()) {
+              this.getDisabledMinutesAfter(selectedDayEvents[i].start.minute())
+            }
+          }
+        }
+      }
+      if (selectedDate.format('YYYY-MM-DD') === this.finalStartDate.format('YYYY-MM-DD')) {
+        this.getDisabledHoursBefore(this.finalStartDate.hour()-1)
+        if (selectedDate.hour() === this.finalStartDate.hour()) {
+          this.getDisabledMinutesBefore(this.finalStartDate.minute())
+        }
+      }
+    }
+  }
+
 
   @action.bound
   onChange = (e) => {
@@ -488,14 +492,22 @@ class EventStore {
       {
         id: sort().new(),
         title: this.eventTitle,
-        start: this.finalStartDateTime,
-        end: this.finalEndDateTime,
+        start: this.finalStartDate,
+        end: this.finalEndDate,
       }
      ]
   }
 
   @action.bound
-  resetForm = () => {
+  deleteEvent = (eventId) => {
+    this.events = filter(this.events, event => {
+      return event.id !== eventId
+    })
+  }
+
+  @action.bound
+  resetForm = (form) => {
+    form.resetFields();
     this.clearEnd();
     this.clearStart();
     this.eventTitle = '';
