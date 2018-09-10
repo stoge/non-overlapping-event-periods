@@ -50,6 +50,7 @@ class EventsTable extends React.Component {
             <Divider type="vertical" />
             <Button
               size="small"
+              onClick={store.editEvent}
             >
               <Icon type="edit" theme="outlined" />
             </Button>

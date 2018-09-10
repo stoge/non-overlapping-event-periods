@@ -1,11 +1,11 @@
 import React, { Component } from 'react';
-import { Row, Col, Layout } from 'antd';
+import { Row, Col, Layout, Button } from 'antd';
 import DevTools from 'mobx-react-devtools'
 import './App.css';
 import InputForm from './components/InputForm/inputForm';
 import MyCalendar from './components/Calendar/calendar';
 import EventsTable from './components/EventsTable/eventsTable'
-
+import EditModal from './components/EditModal/editModal'
 
 const { Content, Footer } = Layout;
 
@@ -20,6 +20,11 @@ class App extends Component {
             </Row>
             <Row>
                 <Col span={12}>
+                  <Button type='primary' style={{
+                    marginBottom: '14px'
+                  }}>
+                    Add new event
+                  </Button>
                   <EventsTable />
                 </Col>
                 <Col span={12}>
@@ -32,6 +37,7 @@ class App extends Component {
               Created by Stoge
           </Footer>
         </Layout>
+        <EditModal />
       </div>
     );
   }

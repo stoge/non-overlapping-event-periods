@@ -1,7 +1,8 @@
 import { observable, action, computed } from 'mobx';
 import Moment from 'moment'
 import sort from 'short-uuid';
-import { map, isEmpty, union, filter, sortBy } from 'lodash';
+import { map, isEmpty, union, filter, sortBy, reverse } from 'lodash';
+import { getDay } from '../utils/dateUtils'
 import { extendMoment } from 'moment-range';
 
 const moment = extendMoment(Moment)
@@ -17,6 +18,9 @@ class EventStore {
 
   @observable disabledMinutes = []
   @observable disabledHours = []
+
+  @observable isEventEdited = false
+  @observable selectedEvent = null
 
   @observable eventTitle = ''
   @observable events = [
@@ -91,7 +95,7 @@ class EventStore {
   }
 
   handleStartDateChange (date) {
-    if (this.initialStartDate && this.initialStartDate.format('YYYY-MM-DD') === date.format('YYYY-MM-DD')) {
+    if (this.initialStartDate && getDay(this.initialStartDate) === getDay(date)) {
       this.actualStartDate = date
     } else {
       this.initialStartDate = date
@@ -100,7 +104,7 @@ class EventStore {
   }
 
   handleEndDateChange (date) {
-    if (this.initialEndDate && this.initialEndDate.format('YYYY-MM-DD') === date.format('YYYY-MM-DD')) {
+    if (this.initialEndDate && getDay(this.initialEndDate) === getDay(date)) {
       this.actualEndDate = date
     } else {
       this.initialEndDate = date
@@ -109,30 +113,24 @@ class EventStore {
   }
 
   checkPastDay (currentDay) {
-    return moment(currentDay.format('YYYY-MM-DD')).isBefore(
-      moment().format('YYYY-MM-DD')
+    return moment(getDay(currentDay)).isBefore(getDay(moment())
     )
   }
 
   checkIfBeforeEndDay (currentDay) {
     if (this.initialEndDate) {
-      return moment(currentDay.format('YYYY-MM-DD')).isAfter(
-        moment(this.initialEndDate, 'YYYY-MM-DD')
+      return moment(getDay(currentDay)).isAfter(moment(getDay(this.initialEndDate))
       )
     }
   }
 
   existingCampaignDay (currentDay) {
     const existingEvents = this.events
-    let curDay = currentDay.format('YYYY-MM-DD')
+    let curDay = getDay(currentDay)
 
     for (let i = 0; i < existingEvents.length; i++) {
-      let existingCampaignStartDay = moment(existingEvents[i].start).format(
-        'YYYY-MM-DD'
-      )
-      let existingCampaignEndDay = moment(existingEvents[i].end).format(
-        'YYYY-MM-DD'
-      )
+      let existingCampaignStartDay = moment(getDay(existingEvents[i].start))
+      let existingCampaignEndDay = moment(getDay(existingEvents[i].end))
       if (
         moment(curDay).isAfter(existingCampaignStartDay) &&
         moment(curDay).isBefore(existingCampaignEndDay)
@@ -144,9 +142,9 @@ class EventStore {
 
   isEndSelected (currentDay) {
     if (this.finalEndDate) {
-      const existingEvents = sortBy(this.events, event => {
+      const existingEvents = reverse(sortBy(this.events, event => {
         return event.end
-      })
+      }))
       let nearestEnd = null
       for (let i = 0; i < existingEvents.length; i++) {
         if (existingEvents[i].end.isBefore(this.finalEndDate)) {
@@ -154,8 +152,8 @@ class EventStore {
         }
       }
       if (nearestEnd) {
-        return moment(currentDay,'YYYY-MM-DD').isBefore(moment(nearestEnd,'YYYY-MM-DD')) &&
-              moment(currentDay,'YYYY-MM-DD') !== moment(nearestEnd,'YYYY-MM-DD')
+        return moment(getDay(currentDay)).isBefore(moment(getDay(nearestEnd))) &&
+              moment(getDay(currentDay)) !== moment(getDay(nearestEnd))
       }
     }
   }
@@ -163,7 +161,7 @@ class EventStore {
   isStartSelected (currentDay) {
     if (this.finalStartDate) {
       const existingEvents = sortBy(this.events, event => {
-        return event.end
+        return event.start
       })
       let nearestStart = null
       for (let i = 0; i < existingEvents.length; i++) {
@@ -172,8 +170,8 @@ class EventStore {
         }
       }
       if (nearestStart) {
-        return moment(currentDay,'YYYY-MM-DD').isAfter(moment(nearestStart,'YYYY-MM-DD')) &&
-              moment(currentDay,'YYYY-MM-DD') !== moment(nearestStart,'YYYY-MM-DD')
+        return moment(getDay(currentDay)).isAfter(moment(getDay(nearestStart))) &&
+              moment(getDay(currentDay)) !== moment(getDay(nearestStart))
       }
     }
   }
@@ -226,25 +224,17 @@ class EventStore {
       return this.checkPastDay(currentDate)
     }
 
-    return currentDate.isBefore(this.initialStartDate.format('YYYY-MM-DD'))
+    return currentDate.isBefore(getDay(this.initialStartDate))
   }
 
   checkExistingCampaignDay (currentDate) {
     const existingEvents = this.events
     for (var i = 0; i < existingEvents.length; i++) {
-      let existingCampaignStartDay = moment(existingEvents[i].start).format(
-        'YYYY-MM-DD'
-      )
-      let existingCampaignEndDay = moment(existingEvents[i].end).format(
-        'YYYY-MM-DD'
-      )
+      let existingCampaignStartDay = moment(getDay(existingEvents[i].start))
+      let existingCampaignEndDay = moment(getDay(existingEvents[i].end))
       if (
-        moment(existingCampaignStartDay).isBefore(
-          currentDate.format('YYYY-MM-DD')
-        ) &&
-        moment(existingCampaignEndDay).isAfter(
-          currentDate.format('YYYY-MM-DD')
-        )
+        moment(existingCampaignStartDay).isBefore(getDay(currentDate)) &&
+        moment(existingCampaignEndDay).isAfter(getDay(currentDate))
       ) {
         return true
       }
@@ -269,24 +259,16 @@ class EventStore {
     if (!isEmpty(existingEvents)){
       for (var i = 0; i < existingEvents.length; i++) {
         if (
-          selectedDate.format('YYYY-MM-DD') ===
-          existingEvents[i].start.format('YYYY-MM-DD') &&
-          selectedDate.format('YYYY-MM-DD') ===
-          existingEvents[i].end.format('YYYY-MM-DD')
+          getDay(selectedDate) === getDay(existingEvents[i].start) &&
+          getDay(selectedDate) === getDay(existingEvents[i].end)
         ) {
           this.getDisabledHoursFromTo(
             existingEvents[i].start.hour(),
             existingEvents[i].end.hour()
           )
-        } else if (
-          selectedDate.format('YYYY-MM-DD') ===
-          existingEvents[i].start.format('YYYY-MM-DD')
-        ) {
+        } else if (getDay(selectedDate) === getDay(existingEvents[i].start)) {
           this.getDisabledHoursAfter(existingEvents[i].start.hour()+1)
-        } else if (
-          selectedDate.format('YYYY-MM-DD') ===
-          existingEvents[i].end.format('YYYY-MM-DD')
-        ) {
+        } else if (getDay(selectedDate) === getDay(existingEvents[i].end)) {
           this.getDisabledHoursBefore(existingEvents[i].end.hour()-1)
         }
       }
@@ -295,13 +277,12 @@ class EventStore {
 
   handleMinutesPreview(selectedDate) {
     const selectedDayEvents = filter(this.events, event => {
-      return selectedDate.format('YYYY-MM-DD') === event.start.format('YYYY-MM-DD') ||
-        selectedDate.format('YYYY-MM-DD') === event.end.format('YYYY-MM-DD')
+      return getDay(selectedDate) === getDay(event.start) || getDay(selectedDate) === getDay(event.end)
     })
     if (!isEmpty(selectedDayEvents)) {
       for (var i = 0; i < selectedDayEvents.length; i++) {
-        if (selectedDate.format('YYYY-MM-DD') === selectedDayEvents[i].start.format('YYYY-MM-DD') &&
-            selectedDate.format('YYYY-MM-DD') === selectedDayEvents[i].end.format('YYYY-MM-DD')) {
+        if (getDay(selectedDate) === getDay(selectedDayEvents[i].start) &&
+            getDay(selectedDate) === getDay(selectedDayEvents[i].end)) {
           // event starts and ends at same day
           if (selectedDate.hour() === selectedDayEvents[i].start.hour() &&
             selectedDate.hour() === selectedDayEvents[i].end.hour()
@@ -312,9 +293,9 @@ class EventStore {
           } else if(selectedDate.hour() === selectedDayEvents[i].end.hour()){
             this.getDisabledMinutesBefore(selectedDayEvents[i].end.minutes())
           }
-        } else if (selectedDate.format('YYYY-MM-DD') === selectedDayEvents[i].start.format('YYYY-MM-DD')) {
+        } else if (getDay(selectedDate) === getDay(selectedDayEvents[i].start)) {
           this.getDisabledMinutesAfter(selectedDayEvents[i].start.minutes())
-        } else if (selectedDate.format('YYYY-MM-DD') === selectedDayEvents[i].end.format('YYYY-MM-DD')){
+        } else if (getDay(selectedDate) === getDay(selectedDayEvents[i].end)){
           this.getDisabledMinutesBefore(selectedDayEvents[i].end.minutes())
         }
       }
@@ -431,12 +412,11 @@ class EventStore {
   handleSelectedEndDate (selectedDate) {
     if (this.finalEndDate) {
       const selectedDayEvents = filter(this.events, event => {
-        return selectedDate.format('YYYY-MM-DD') === event.start.format('YYYY-MM-DD') ||
-          selectedDate.format('YYYY-MM-DD') === event.end.format('YYYY-MM-DD')
+        return getDay(selectedDate) === getDay(event.start) || getDay(selectedDate) === getDay(event.end)
       })
       if (!isEmpty(selectedDayEvents)) {
         for (var i = 0; i < selectedDayEvents.length; i++) {
-          if (selectedDate.format('YYYY-MM-DD') === selectedDayEvents[i].end.format('YYYY-MM-DD')) {
+          if (getDay(selectedDate) === getDay(selectedDayEvents[i].end) && getDay(selectedDate) !== getDay(this.finalEndDate)) {
             this.getDisabledHoursBefore(selectedDayEvents[i].end.hour()-1)
             if( selectedDate.hour() === selectedDayEvents[i].end.hour()) {
               this.getDisabledMinutesBefore(selectedDayEvents[i].end.minute())
@@ -444,7 +424,7 @@ class EventStore {
           }
         }
       }
-      if (selectedDate.format('YYYY-MM-DD') === this.finalEndDate.format('YYYY-MM-DD')) {
+      if (getDay(selectedDate) === getDay(this.finalEndDate)) {
         this.getDisabledHoursAfter(this.finalEndDate.hour()+1)
         if (selectedDate.hour() === this.finalEndDate.hour()) {
           this.getDisabledMinutesAfter(this.finalEndDate.minute())
@@ -456,12 +436,11 @@ class EventStore {
   handleSelectedStartDate(selectedDate) {
     if (this.finalStartDate) {
       const selectedDayEvents = filter(this.events, event => {
-        return selectedDate.format('YYYY-MM-DD') === event.start.format('YYYY-MM-DD') ||
-          selectedDate.format('YYYY-MM-DD') === event.end.format('YYYY-MM-DD')
+        return getDay(selectedDate) === event.start.format('YYYY-MM-DD') || getDay(selectedDate) === getDay(event.end)
       })
       if (!isEmpty(selectedDayEvents)) {
         for (var i = 0; i < selectedDayEvents.length; i++) {
-          if (selectedDate.format('YYYY-MM-DD') === selectedDayEvents[i].start.format('YYYY-MM-DD')) {
+          if (getDay(selectedDate) === getDay(selectedDayEvents[i].start) && getDay(selectedDate) !== getDay(this.finalStartDate)) {
             this.getDisabledHoursAfter(selectedDayEvents[i].start.hour()+1)
             if( selectedDate.hour() === selectedDayEvents[i].start.hour()) {
               this.getDisabledMinutesAfter(selectedDayEvents[i].start.minute())
@@ -469,7 +448,7 @@ class EventStore {
           }
         }
       }
-      if (selectedDate.format('YYYY-MM-DD') === this.finalStartDate.format('YYYY-MM-DD')) {
+      if (getDay(selectedDate) === getDay(this.finalStartDate)) {
         this.getDisabledHoursBefore(this.finalStartDate.hour()-1)
         if (selectedDate.hour() === this.finalStartDate.hour()) {
           this.getDisabledMinutesBefore(this.finalStartDate.minute())
@@ -513,6 +492,14 @@ class EventStore {
     this.eventTitle = '';
   }
 
+  @action.bound
+  editEvent = (record) => {
+    this.isEventEdited = !this.isEventEdited
+    this.selectedEvent = record
+
+
+  }
+
   @computed
   get calendarEvents () {
     return map(this.events, event => {
@@ -523,7 +510,6 @@ class EventStore {
       }
     })
   }
-
 
 }
 
