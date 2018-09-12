@@ -1,6 +1,6 @@
 import React from 'react'
 import { observer } from 'mobx-react'
-import { Table, Button, Popconfirm, Icon, Divider } from 'antd'
+import { Table, Button, Popconfirm, Icon, Divider, Tooltip } from 'antd'
 import moment from 'moment';
 import store from '../../stores/eventStore'
 
@@ -14,7 +14,7 @@ class EventsTable extends React.Component {
       key: 'eventTitle'
     },
     {
-      title: 'Event Start-time',
+      title: 'Event star',
       dataIndex: 'start',
       key: 'eventStartTime',
       render: (text, record) => {
@@ -22,7 +22,7 @@ class EventsTable extends React.Component {
       }
     },
     {
-      title: 'Event End-time',
+      title: 'Event end',
       dataIndex: 'end',
       key: 'eventEndTime',
       render: (text, record) => {
@@ -35,25 +35,29 @@ class EventsTable extends React.Component {
       render: (text, record) => {
         return (
           <div>
-            <Popconfirm
-              placement="top"
-              title="Are you sure you want to delete the event"
-              onConfirm={() => store.deleteEvent(record.id)}
-            >
-              <Button
-                type="danger"
-                size="small"
+            <Tooltip placement="left" title='Delete'>
+              <Popconfirm
+                placement="top"
+                title="Are you sure you want to delete the event"
+                onConfirm={() => store.deleteEvent(record.id)}
               >
-                <Icon type="delete" theme="outlined" />
-              </Button>
-            </Popconfirm>
+                <Button
+                  type="danger"
+                  size="small"
+                >
+                  <Icon type="delete" theme="outlined" />
+                </Button>
+              </Popconfirm>
+            </Tooltip>
             <Divider type="vertical" />
-            <Button
-              size="small"
-              onClick={store.editEvent}
-            >
-              <Icon type="edit" theme="outlined" />
-            </Button>
+            <Tooltip placement="right" title='Edit'>
+              <Button
+                size="small"
+                onClick={() => store.openModal('edit', record)}
+              >
+                <Icon type="edit" theme="outlined" />
+              </Button>
+            </Tooltip>
           </div>
         )
       }
@@ -64,6 +68,14 @@ class EventsTable extends React.Component {
 
     return (
       <div>
+        <Button
+          type='primary'
+          onClick={() => store.openModal('new')}
+          style={{
+            marginBottom: '14px'
+          }}>
+          Add new event
+        </Button>
         <Table
         columns={this.columns}
         dataSource={store.events.slice()}

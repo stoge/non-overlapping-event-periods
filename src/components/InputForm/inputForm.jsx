@@ -2,7 +2,6 @@ import React from 'react';
 import {observer} from 'mobx-react'
 import {Form, Input, DatePicker, Row, Col, Button} from 'antd';
 import store from '../../stores/eventStore'
-import moment from 'moment';
 
 @observer(['events'])
 class InputForm extends React.Component {
@@ -24,7 +23,7 @@ class InputForm extends React.Component {
 
     return (
       <Form
-        onSubmit={(e)=>store.handleSubmit(e, form)}
+        onSubmit={(e)=>store.handleSubmit(e, form, store.eventModalMode)}
       >
         <Row
           style={{display: 'flex', justifyContent: 'space-around'}}

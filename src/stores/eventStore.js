@@ -1,7 +1,7 @@
 import { observable, action, computed } from 'mobx';
 import Moment from 'moment'
 import sort from 'short-uuid';
-import { map, isEmpty, union, filter, sortBy, reverse } from 'lodash';
+import { map, isEmpty, union, filter, sortBy, reverse, find } from 'lodash';
 import { getDay } from '../utils/dateUtils'
 import { extendMoment } from 'moment-range';
 
@@ -19,7 +19,7 @@ class EventStore {
   @observable disabledMinutes = []
   @observable disabledHours = []
 
-  @observable isEventEdited = false
+  @observable eventModalMode = null
   @observable selectedEvent = null
 
   @observable eventTitle = ''
@@ -60,6 +60,18 @@ class EventStore {
     //   start: moment().add(10, 'minutes'),
     //   end: moment().add(20, 'minutes'),
     // },
+    {
+      id: sort().new(),
+      title: 'test4',
+      start: moment(),
+      end: moment().add(15, 'minutes')
+    },
+    {
+      id: sort().new(),
+      title: 'test4',
+      start: moment(),
+      end: moment().add(15, 'minutes')
+    }
   ]
 
 
@@ -76,7 +88,16 @@ class EventStore {
   @action.bound
     handleSubmit = (e,form) => {
     e.preventDefault();
-    this.createEvent();
+    switch(this.eventModalMode) {
+      case 'new':
+        this.createEvent()
+        break;
+      case 'edit':
+        this.editEvent()
+        break
+      default:
+    }
+    this.eventModalMode = null
     this.resetForm(form)
   }
 
@@ -478,6 +499,17 @@ class EventStore {
   }
 
   @action.bound
+  editEvent = () => {
+    let editedEvent = find(this.events, event => {
+      return event.id === this.selectedEvent.id
+    })
+    editedEvent.start = this.finalStartDate
+    editedEvent.end = this.finalEndDate
+    editedEvent.title = this.eventTitle
+    this.events = [...this.events]
+  }
+
+  @action.bound
   deleteEvent = (eventId) => {
     this.events = filter(this.events, event => {
       return event.id !== eventId
@@ -493,11 +525,17 @@ class EventStore {
   }
 
   @action.bound
-  editEvent = (record) => {
-    this.isEventEdited = !this.isEventEdited
-    this.selectedEvent = record
-
-
+  openModal = (mode, record = null, form) =>{
+    this.eventModalMode = mode
+    if (record) {
+      this.selectedEvent = record
+      this.finalStartDate = record.start
+      this.finalEndDate = record.end
+      this.eventTitle = record.title
+    }
+    if (!mode) {
+      this.resetForm(form)
+    }
   }
 
   @computed

@@ -5,7 +5,7 @@ import './App.css';
 import InputForm from './components/InputForm/inputForm';
 import MyCalendar from './components/Calendar/calendar';
 import EventsTable from './components/EventsTable/eventsTable'
-import EditModal from './components/EditModal/editModal'
+import EventModal from './components/EventModal/eventModal'
 
 const { Content, Footer } = Layout;
 
@@ -14,17 +14,9 @@ class App extends Component {
     return (
       <div className="App">
         <Layout>
-          <Content style={{ padding: '0 50px' }}>
-            <Row>
-                <InputForm />
-            </Row>
+          <Content style={{ padding: '50px' }}>
             <Row>
                 <Col span={12}>
-                  <Button type='primary' style={{
-                    marginBottom: '14px'
-                  }}>
-                    Add new event
-                  </Button>
                   <EventsTable />
                 </Col>
                 <Col span={12}>
@@ -37,7 +29,7 @@ class App extends Component {
               Created by Stoge
           </Footer>
         </Layout>
-        <EditModal />
+        <EventModal />
       </div>
     );
   }
